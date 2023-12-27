@@ -1,5 +1,5 @@
 use crate::{bounding_box::BoundingBox, point::Point};
-use std::fmt::Debug;
+use std::{fmt::Debug, io::Write};
 
 const M: usize = 4;
 
@@ -165,5 +165,33 @@ impl<T: Debug> RTree<T> {
                 }
             }
         }
+    }
+
+    pub fn dot(&self, vertical: bool, f: &mut impl Write) -> std::io::Result<()> {
+        writeln!(
+            f,
+            "digraph G {{\nrankdir=\"{}\";
+            newrank=true;",
+            if vertical { "TB" } else { "LR" }
+        )?;
+        for (i, node) in self.nodes.iter().enumerate() {
+            let color = if matches!(node.node, RTreeNode::Node(_)) {
+                "style=filled fillcolor=\"#ffff7f\""
+            } else {
+                "style=filled fillcolor=\"#7fff7f\""
+            };
+            writeln!(
+                f,
+                "a{} [label=\"#{} {}\" shape=rect {color}];",
+                i, i, node.bb
+            )?;
+            if let RTreeNode::Node(children) = &node.node {
+                for child in children {
+                    writeln!(f, "a{} -> a{};", i, *child)?;
+                }
+            }
+        }
+        writeln!(f, "}}")?;
+        Ok(())
     }
 }

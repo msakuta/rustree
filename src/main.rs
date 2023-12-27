@@ -4,7 +4,7 @@ mod r_tree;
 
 use crate::{bounding_box::BoundingBox, point::Point, r_tree::RTree};
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let mut rtree = RTree::new();
     let mut try_add = |x, y| {
         let pt = Point { x, y };
@@ -29,4 +29,9 @@ fn main() {
     };
     let found = rtree.find(&BoundingBox { min, max });
     println!("Found: {found:?}");
+
+    if let Ok(f) = std::fs::File::create("graph.dot") {
+        rtree.dot(true, &mut std::io::BufWriter::new(f))?;
+    }
+    Ok(())
 }
