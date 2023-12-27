@@ -11,5 +11,8 @@ fn main() {
     println!("inserted: {rtree:?}");
     let pt = Point { x: -2., y: 0. };
     rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-    println!("inserted: {rtree:?}");
+    println!("inserted {pt:?}: {rtree:?}");
+    let pt = Point { x: 1., y: 3. };
+    rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
+    println!("inserted {pt:?}: {rtree:?}");
 }

@@ -1,5 +1,6 @@
 use crate::bounding_box::BoundingBox;
 use crate::point::Point;
+use std::fmt::Debug;
 
 const M: usize = 4;
 
@@ -21,7 +22,7 @@ pub struct RTree<T> {
     pub nodes: Vec<RTreeEntry<T>>,
 }
 
-impl<T> RTree<T> {
+impl<T: Debug> RTree<T> {
     pub fn new() -> Self {
         Self {
             nodes: vec![RTreeEntry {
@@ -42,6 +43,7 @@ impl<T> RTree<T> {
         let min = if let RTreeNode::Node(children) = &self.nodes[node].node {
             children
                 .iter()
+                .filter(|child| matches!(self.nodes[**child].node, RTreeNode::Node(_)))
                 .min_by(|a, b| {
                     let area_a = self.nodes[**a].bb.get_union(bounding_box).get_area();
                     let area_b = self.nodes[**b].bb.get_union(bounding_box).get_area();
@@ -118,7 +120,7 @@ impl<T> RTree<T> {
         let RTreeEntry { node, bb, .. } = &mut *chosen_leaf;
 
         match node {
-            RTreeNode::Leaf(_) => (),
+            RTreeNode::Leaf(_) => println!("Adding to leaf!!"),
             RTreeNode::Node(children) => {
                 if children.len() < M {
                     *bb = bb.get_union(&bounding_box);
