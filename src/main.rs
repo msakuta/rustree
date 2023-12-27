@@ -16,9 +16,9 @@ fn main() {
     try_add(-2., 0.);
     try_add(1., 7.);
     try_add(1., 5.);
-    // try_add(-1., -5.);
+    try_add(-1., -5.);
 
-    let pt = Point { x: 2.1, y: 0.1 };
+    let pt = Point { x: 0.5, y: 7.1 };
     let min = Point {
         x: pt.x - 0.5,
         y: pt.y - 0.5,

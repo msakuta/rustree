@@ -69,6 +69,11 @@ impl<T: Debug> RTree<T> {
     }
 
     fn find_rec(&self, this: usize, bounding_box: &BoundingBox) -> Option<&T> {
+        println!(
+            "nodes[{this}].intersects({}, {bounding_box}) => {}",
+            self.nodes[this].bb,
+            self.nodes[this].bb.intersects(bounding_box)
+        );
         if self.nodes[this].bb.intersects(bounding_box) {
             match self.nodes[this].node {
                 RTreeNode::Leaf(ref leaf) => Some(leaf),
@@ -144,15 +149,16 @@ impl<T: Debug> RTree<T> {
         match node {
             RTreeNode::Leaf(_) => panic!("Adding to leaf!!"),
             RTreeNode::Node(children) => {
-                *bb = bb.get_union(&bounding_box);
                 if children.len() < M {
+                    *bb = bb.get_union(&bounding_box);
                     children.push(idx);
                 } else {
                     let new_child = RTreeEntry {
-                        bb: bounding_box,
+                        bb: *bb,
                         parent: Some(chosen_leaf_i),
                         node: RTreeNode::Node(std::mem::take(children)),
                     };
+                    *bb = bb.get_union(&bounding_box);
                     children.push(idx);
                     children.push(idx + 1);
                     self.nodes.push(new_child);

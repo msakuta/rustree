@@ -42,6 +42,16 @@ impl BoundingBox {
     }
 }
 
+impl std::fmt::Display for BoundingBox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({}, {}, {}, {})",
+            self.min.x, self.min.y, self.max.x, self.max.y
+        )
+    }
+}
+
 #[test]
 fn test_intersects() {
     let bb1 = BoundingBox::new(-2., -2., 1., 1.);
