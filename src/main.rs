@@ -6,13 +6,27 @@ use crate::{bounding_box::BoundingBox, point::Point, r_tree::RTree};
 
 fn main() {
     let mut rtree = RTree::new();
-    let pt = Point { x: 2., y: 0. };
-    rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-    println!("inserted: {rtree:?}");
-    let pt = Point { x: -2., y: 0. };
-    rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-    println!("inserted {pt:?}: {rtree:?}");
-    let pt = Point { x: 1., y: 3. };
-    rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-    println!("inserted {pt:?}: {rtree:?}");
+    let mut try_add = |x, y| {
+        let pt = Point { x, y };
+        rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
+        println!("inserted: {rtree:?}");
+        println!("now bb: {:?}", rtree.bounding_box());
+    };
+    try_add(2., 0.);
+    try_add(-2., 0.);
+    try_add(1., 7.);
+    try_add(1., 5.);
+    // try_add(-1., -5.);
+
+    let pt = Point { x: 2.1, y: 0.1 };
+    let min = Point {
+        x: pt.x - 0.5,
+        y: pt.y - 0.5,
+    };
+    let max = Point {
+        x: pt.x + 0.5,
+        y: pt.y + 0.5,
+    };
+    let found = rtree.find(&BoundingBox { min, max });
+    println!("Found: {found:?}");
 }

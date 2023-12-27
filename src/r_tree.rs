@@ -5,21 +5,21 @@ use std::fmt::Debug;
 const M: usize = 4;
 
 #[derive(Debug)]
-pub enum RTreeNode<T> {
+enum RTreeNode<T> {
     Node(Vec<usize>),
     Leaf(T),
 }
 
 #[derive(Debug)]
 struct RTreeEntry<T> {
-    pub bb: BoundingBox,
-    pub parent: Option<usize>,
-    pub node: RTreeNode<T>,
+    bb: BoundingBox,
+    parent: Option<usize>,
+    node: RTreeNode<T>,
 }
 
 #[derive(Debug)]
 pub struct RTree<T> {
-    pub nodes: Vec<RTreeEntry<T>>,
+    nodes: Vec<RTreeEntry<T>>,
 }
 
 impl<T: Debug> RTree<T> {
@@ -34,6 +34,10 @@ impl<T: Debug> RTree<T> {
                 node: RTreeNode::Node(vec![]),
             }],
         }
+    }
+
+    pub fn bounding_box(&self) -> BoundingBox {
+        self.nodes[0].bb
     }
 
     fn choose_leaf_rec(&self, node: usize, bounding_box: &BoundingBox) -> usize {
@@ -59,8 +63,26 @@ impl<T: Debug> RTree<T> {
             node
         }
     }
-    pub fn choose_leaf(&self, this: usize, bounding_box: &BoundingBox) -> usize {
+
+    fn choose_leaf(&self, this: usize, bounding_box: &BoundingBox) -> usize {
         self.choose_leaf_rec(this, bounding_box)
+    }
+
+    fn find_rec(&self, this: usize, bounding_box: &BoundingBox) -> Option<&T> {
+        if self.nodes[this].bb.intersects(bounding_box) {
+            match self.nodes[this].node {
+                RTreeNode::Leaf(ref leaf) => Some(leaf),
+                RTreeNode::Node(ref children) => children
+                    .iter()
+                    .find_map(|c| self.find_rec(*c, bounding_box)),
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn find(&self, bounding_box: &BoundingBox) -> Option<&T> {
+        self.find_rec(0, bounding_box)
     }
 
     pub fn adjust_tree(&mut self, node: usize, nodes_to_add: &mut Vec<RTreeEntry<T>>) {
@@ -106,26 +128,34 @@ impl<T: Debug> RTree<T> {
     }
 
     pub fn insert_entry(&mut self, value: T, bounding_box: BoundingBox) {
-        let chosen_leaf = self.choose_leaf(0, &bounding_box);
+        let chosen_leaf_i = self.choose_leaf(0, &bounding_box);
 
         let node_to_add = RTreeEntry {
             bb: bounding_box,
-            parent: Some(chosen_leaf),
+            parent: Some(chosen_leaf_i),
             node: RTreeNode::Leaf(value),
         };
 
         let idx = self.nodes.len();
         self.nodes.push(node_to_add);
-        let chosen_leaf = &mut self.nodes[chosen_leaf];
-        let RTreeEntry { node, bb, .. } = &mut *chosen_leaf;
+        let chosen_leaf = &mut self.nodes[chosen_leaf_i];
+        let RTreeEntry { node, bb, .. } = chosen_leaf;
 
         match node {
-            RTreeNode::Leaf(_) => println!("Adding to leaf!!"),
+            RTreeNode::Leaf(_) => panic!("Adding to leaf!!"),
             RTreeNode::Node(children) => {
+                *bb = bb.get_union(&bounding_box);
                 if children.len() < M {
-                    *bb = bb.get_union(&bounding_box);
                     children.push(idx);
                 } else {
+                    let new_child = RTreeEntry {
+                        bb: bounding_box,
+                        parent: Some(chosen_leaf_i),
+                        node: RTreeNode::Node(std::mem::take(children)),
+                    };
+                    children.push(idx);
+                    children.push(idx + 1);
+                    self.nodes.push(new_child);
                     // Split the node
                 }
             }
