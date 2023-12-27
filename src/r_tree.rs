@@ -1,5 +1,4 @@
-use crate::bounding_box::BoundingBox;
-use crate::point::Point;
+use crate::{bounding_box::BoundingBox, point::Point};
 use std::fmt::Debug;
 
 const M: usize = 4;
@@ -124,7 +123,7 @@ impl<T: Debug> RTree<T> {
                             }
                         }
                     } else {
-                        // Split the node
+                        todo!()
                     }
                 }
                 self.adjust_tree(p, nodes_to_add);
@@ -153,6 +152,7 @@ impl<T: Debug> RTree<T> {
                     *bb = bb.get_union(&bounding_box);
                     children.push(idx);
                 } else {
+                    // TODO: Split the node more smartly
                     let new_child = RTreeEntry {
                         bb: *bb,
                         parent: Some(chosen_leaf_i),
@@ -162,7 +162,6 @@ impl<T: Debug> RTree<T> {
                     children.push(idx);
                     children.push(idx + 1);
                     self.nodes.push(new_child);
-                    // Split the node
                 }
             }
         }
