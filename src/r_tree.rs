@@ -85,8 +85,27 @@ impl<T: Debug> RTree<T> {
         }
     }
 
+    /// Finds an entry from this RTree that intersects with the given bounding box.
+    /// It returns only the first found item.
     pub fn find(&self, bounding_box: &BoundingBox) -> Option<&T> {
         self.find_rec(0, bounding_box)
+    }
+
+    fn walk_rec(&self, node: usize, level: usize, f: &mut impl FnMut(usize, usize, &BoundingBox)) {
+        f(node, level, &self.nodes[node].bb);
+        match self.nodes[node].node {
+            RTreeNode::Leaf(_) => {}
+            RTreeNode::Node(ref children) => {
+                for child in children {
+                    self.walk_rec(*child, level + 1, f);
+                }
+            }
+        }
+    }
+
+    /// Passes (index, level, bounding_box) to the callback
+    pub fn walk(&self, f: &mut impl FnMut(usize, usize, &BoundingBox)) {
+        self.walk_rec(0, 0, f);
     }
 
     pub fn adjust_tree(&mut self, node: usize, nodes_to_add: &mut Vec<RTreeEntry<T>>) {
@@ -131,6 +150,10 @@ impl<T: Debug> RTree<T> {
         }
     }
 
+    /// Insert an entry object of type T in this RTree with an associated bounding box.
+    ///
+    /// There is no built-in mechanism to ensure `bounding_box` is actually bounding `value`.
+    /// It is the caller's responsibility to hold that precondition.
     pub fn insert_entry(&mut self, value: T, bounding_box: BoundingBox) {
         let chosen_leaf_i = self.choose_leaf(0, &bounding_box);
 
@@ -167,6 +190,9 @@ impl<T: Debug> RTree<T> {
         }
     }
 
+    /// Outputs a dot file for graphviz visualization.
+    ///
+    /// You would use it for debugging, but for actual data real space visualization should be better.
     pub fn dot(&self, vertical: bool, f: &mut impl Write) -> std::io::Result<()> {
         writeln!(
             f,
