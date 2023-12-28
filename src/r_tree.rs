@@ -68,11 +68,11 @@ impl<T: Debug> RTree<T> {
     }
 
     fn find_rec(&self, this: usize, bounding_box: &BoundingBox) -> Option<&T> {
-        println!(
-            "nodes[{this}].intersects({}, {bounding_box}) => {}",
-            self.nodes[this].bb,
-            self.nodes[this].bb.intersects(bounding_box)
-        );
+        // println!(
+        //     "nodes[{this}].intersects({}, {bounding_box}) => {}",
+        //     self.nodes[this].bb,
+        //     self.nodes[this].bb.intersects(bounding_box)
+        // );
         if self.nodes[this].bb.intersects(bounding_box) {
             match self.nodes[this].node {
                 RTreeNode::Leaf(ref leaf) => Some(leaf),
@@ -150,6 +150,12 @@ impl<T: Debug> RTree<T> {
         }
     }
 
+    fn append_entry(&mut self, node: RTreeEntry<T>) -> usize {
+        let idx = self.nodes.len();
+        self.nodes.push(node);
+        idx
+    }
+
     /// Insert an entry object of type T in this RTree with an associated bounding box.
     ///
     /// There is no built-in mechanism to ensure `bounding_box` is actually bounding `value`.
@@ -166,28 +172,87 @@ impl<T: Debug> RTree<T> {
         let idx = self.nodes.len();
         self.nodes.push(node_to_add);
         let chosen_leaf = &mut self.nodes[chosen_leaf_i];
-        let RTreeEntry { node, bb, .. } = chosen_leaf;
+        let node = &mut chosen_leaf.node;
 
-        match node {
+        let children = match node {
             RTreeNode::Leaf(_) => panic!("Adding to leaf!!"),
-            RTreeNode::Node(children) => {
-                if children.len() < M {
-                    *bb = bb.get_union(&bounding_box);
-                    children.push(idx);
-                } else {
-                    // TODO: Split the node more smartly
-                    let new_child = RTreeEntry {
-                        bb: *bb,
-                        parent: Some(chosen_leaf_i),
-                        node: RTreeNode::Node(std::mem::take(children)),
-                    };
-                    *bb = bb.get_union(&bounding_box);
-                    children.push(idx);
-                    children.push(idx + 1);
-                    self.nodes.push(new_child);
-                }
+            RTreeNode::Node(children) => children,
+        };
+
+        children.push(idx);
+        if children.len() <= M {
+            let mut parent = Some(chosen_leaf_i);
+            let mut bb = bounding_box;
+            while let Some(p) = parent {
+                let parent_node = &mut self.nodes[p];
+                bb = parent_node.bb.get_union(&bb);
+                parent_node.bb = bb;
+                parent = parent_node.parent;
             }
+            return;
         }
+
+        // Our goal here is to split the collection of nodes into 2 groups that minimizes each bounding box.
+        // I don't know if there is any fast way to find the solution, so I will just scan all possible combinations.
+        let next_children = std::mem::take(children);
+        let all_combi = 1 << next_children.len();
+        // combi represents the combinations of node sets in a bitfield. If a bit is on, it is right side.
+        // We skip 0 and all_combi-1 because it means all nodes are on one side.
+        // Technically, it counts the same combination twice if you flip all bits.
+        let combi = (1..all_combi - 1)
+            .map(|combi| {
+                let left_bb = next_children
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| combi & (1 << *i) == 0)
+                    .map(|(_, id)| self.nodes[*id].bb)
+                    .reduce(|a, b| a.get_union(&b));
+                let right_bb = next_children
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| combi & (1 << *i) != 0)
+                    .map(|(_, id)| self.nodes[*id].bb)
+                    .reduce(|a, b| a.get_union(&b));
+                (
+                    combi,
+                    left_bb.map(|bb| bb.get_area()).unwrap_or(0.)
+                        + right_bb.map(|bb| bb.get_area()).unwrap_or(0.),
+                )
+            })
+            .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
+        let Some((combi, _)) = combi else {
+            panic!("No combination is found")
+        };
+        let mut build_child = |f| {
+            let children: Vec<_> = next_children
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| f ^ (combi & (1 << *i) == 0))
+                .map(|(_, id)| *id)
+                .collect();
+            for child in &children {
+                self.nodes[*child].parent = Some(self.nodes.len());
+            }
+            let bb = children
+                .iter()
+                .map(|id| self.nodes[*id].bb)
+                .reduce(|a, b| a.get_union(&b))
+                .unwrap();
+            self.append_entry(RTreeEntry {
+                bb,
+                parent: Some(chosen_leaf_i),
+                node: RTreeNode::Node(children),
+            })
+        };
+        let left_child = build_child(true);
+        let right_child = build_child(false);
+        let chosen_leaf = &mut self.nodes[chosen_leaf_i];
+        let RTreeEntry { node, bb, .. } = chosen_leaf;
+        *bb = bb.get_union(&bounding_box);
+        let mut children = vec![];
+        children.push(left_child);
+        children.push(right_child);
+        *node = RTreeNode::Node(children);
     }
 
     /// Outputs a dot file for graphviz visualization.

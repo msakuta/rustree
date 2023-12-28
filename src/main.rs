@@ -13,9 +13,9 @@ fn main() -> std::io::Result<()> {
         println!("now bb: {:?}", rtree.bounding_box());
     };
     try_add(2., 0.);
-    try_add(-2., 0.);
+    try_add(-2., 1.);
     try_add(1., 7.);
-    try_add(1., 5.);
+    try_add(0., 5.);
     try_add(-1., -5.);
 
     let pt = Point { x: 0.5, y: 7.1 };

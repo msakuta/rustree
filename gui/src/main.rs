@@ -35,9 +35,9 @@ impl RustreeApp {
             rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
         };
         try_add(2., 0.);
-        try_add(-2., 0.);
+        try_add(-2., 1.);
         try_add(1., 7.);
-        try_add(1., 5.);
+        try_add(0., 5.);
         try_add(-1., -5.);
         Self {
             rtree,
