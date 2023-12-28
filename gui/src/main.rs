@@ -33,8 +33,6 @@ impl RustreeApp {
         let mut try_add = |x, y| {
             let pt = Point { x, y };
             rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-            println!("inserted: {rtree:?}");
-            println!("now bb: {:?}", rtree.bounding_box());
         };
         try_add(2., 0.);
         try_add(-2., 0.);
@@ -88,11 +86,25 @@ impl RustreeApp {
             }
         });
     }
+
+    fn show_side_panel(&mut self, ui: &mut Ui) {
+        let mut s = "id, level\n".to_string();
+        self.rtree.walk(&mut |id, level, _bb| {
+            s += &format!("{:width$}{id}, {level}\n", " ", width = level * 2);
+        });
+        ui.label(s);
+    }
 }
 
 impl eframe::App for RustreeApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint();
+
+        eframe::egui::SidePanel::right("side_panel")
+            .min_width(200.)
+            .show(ctx, |ui| {
+                eframe::egui::ScrollArea::vertical().show(ui, |ui| self.show_side_panel(ui));
+            });
 
         eframe::egui::CentralPanel::default()
             // .resizable(true)
