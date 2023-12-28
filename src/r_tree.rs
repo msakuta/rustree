@@ -1,4 +1,7 @@
-use crate::{bounding_box::BoundingBox, point::Point};
+use crate::{
+    bounding_box::{self, BoundingBox},
+    point::Point,
+};
 use std::{fmt::Debug, io::Write};
 
 const M: usize = 4;
@@ -156,6 +159,17 @@ impl<T: Debug> RTree<T> {
         idx
     }
 
+    fn update_bbox(&mut self, idx: usize, bounding_box: BoundingBox) {
+        let mut parent = Some(idx);
+        let mut bb = bounding_box;
+        while let Some(p) = parent {
+            let parent_node = &mut self.nodes[p];
+            bb = parent_node.bb.get_union(&bb);
+            parent_node.bb = bb;
+            parent = parent_node.parent;
+        }
+    }
+
     /// Insert an entry object of type T in this RTree with an associated bounding box.
     ///
     /// There is no built-in mechanism to ensure `bounding_box` is actually bounding `value`.
@@ -181,14 +195,7 @@ impl<T: Debug> RTree<T> {
 
         children.push(idx);
         if children.len() <= M {
-            let mut parent = Some(chosen_leaf_i);
-            let mut bb = bounding_box;
-            while let Some(p) = parent {
-                let parent_node = &mut self.nodes[p];
-                bb = parent_node.bb.get_union(&bb);
-                parent_node.bb = bb;
-                parent = parent_node.parent;
-            }
+            self.update_bbox(chosen_leaf_i, bounding_box);
             return;
         }
 
@@ -246,13 +253,9 @@ impl<T: Debug> RTree<T> {
         };
         let left_child = build_child(true);
         let right_child = build_child(false);
-        let chosen_leaf = &mut self.nodes[chosen_leaf_i];
-        let RTreeEntry { node, bb, .. } = chosen_leaf;
-        *bb = bb.get_union(&bounding_box);
-        let mut children = vec![];
-        children.push(left_child);
-        children.push(right_child);
-        *node = RTreeNode::Node(children);
+        self.update_bbox(chosen_leaf_i, bounding_box);
+        let node = &mut self.nodes[chosen_leaf_i].node;
+        *node = RTreeNode::Node(vec![left_child, right_child]);
     }
 
     /// Outputs a dot file for graphviz visualization.
