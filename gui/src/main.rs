@@ -29,27 +29,17 @@ struct RustreeApp {
 
 impl RustreeApp {
     fn new() -> Self {
-        let mut rtree = RTree::new();
-        let mut try_add = |x, y| {
-            let pt = Point { x, y };
-            rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-        };
-        try_add(2., 0.);
-        try_add(-2., 1.);
-        try_add(1., 7.);
-        try_add(0., 5.);
-        try_add(-1., -5.);
         Self {
-            rtree,
+            rtree: Self::reset(),
             offset: pos2(100., 100.),
         }
     }
 
     fn paint(&mut self, ui: &mut Ui) {
-        let (_response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
+        let (response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
 
-        if _response.clicked() {
-            if let Some(pos) = _response.interact_pointer_pos() {
+        if response.clicked() {
+            if let Some(pos) = response.interact_pointer_pos() {
                 let screen_pos = (pos - self.offset.to_vec2()) / 10.;
                 let pt = Point {
                     x: screen_pos.x as f64,
@@ -87,7 +77,24 @@ impl RustreeApp {
         });
     }
 
+    fn reset() -> RTree<Point> {
+        let mut rtree = RTree::new();
+        let mut try_add = |x, y| {
+            let pt = Point { x, y };
+            rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
+        };
+        try_add(2., 0.);
+        try_add(-2., 1.);
+        try_add(1., 7.);
+        try_add(0., 5.);
+        try_add(-1., -5.);
+        rtree
+    }
+
     fn show_side_panel(&mut self, ui: &mut Ui) {
+        if ui.button("Reset").clicked() {
+            self.rtree = Self::reset();
+        }
         let mut s = "id, level\n".to_string();
         self.rtree.walk(&mut |id, level, _bb| {
             s += &format!("{:width$}{id}, {level}\n", " ", width = level * 2);
