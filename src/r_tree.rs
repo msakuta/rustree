@@ -7,16 +7,26 @@ use std::{fmt::Debug, io::Write};
 const M: usize = 4;
 
 #[derive(Debug)]
-enum RTreeNode<T> {
+pub enum RTreeNode<T> {
     Node(Vec<usize>),
     Leaf(T),
 }
 
 #[derive(Debug)]
-struct RTreeEntry<T> {
+pub struct RTreeEntry<T> {
     bb: BoundingBox,
     parent: Option<usize>,
     node: RTreeNode<T>,
+}
+
+impl<T> RTreeEntry<T> {
+    pub fn bounding_box(&self) -> &BoundingBox {
+        &self.bb
+    }
+
+    pub fn node(&self) -> &RTreeNode<T> {
+        &self.node
+    }
 }
 
 #[derive(Debug)]
@@ -141,8 +151,13 @@ impl<T: Debug> RTree<T> {
         Finder::new(self, *bounding_box)
     }
 
-    fn walk_rec(&self, node: usize, level: usize, f: &mut impl FnMut(usize, usize, &BoundingBox)) {
-        f(node, level, &self.nodes[node].bb);
+    fn walk_rec(
+        &self,
+        node: usize,
+        level: usize,
+        f: &mut impl FnMut(usize, usize, &RTreeEntry<T>),
+    ) {
+        f(node, level, &self.nodes[node]);
         match self.nodes[node].node {
             RTreeNode::Leaf(_) => {}
             RTreeNode::Node(ref children) => {
@@ -154,7 +169,7 @@ impl<T: Debug> RTree<T> {
     }
 
     /// Passes (index, level, bounding_box) to the callback
-    pub fn walk(&self, f: &mut impl FnMut(usize, usize, &BoundingBox)) {
+    pub fn walk(&self, f: &mut impl FnMut(usize, usize, &RTreeEntry<T>)) {
         self.walk_rec(0, 0, f);
     }
 
