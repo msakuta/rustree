@@ -1,7 +1,4 @@
-use crate::{
-    bounding_box::{self, BoundingBox},
-    point::Point,
-};
+use crate::{bounding_box::BoundingBox, point::Point};
 use std::{fmt::Debug, io::Write};
 
 const M: usize = 4;

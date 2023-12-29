@@ -1,8 +1,4 @@
-mod bounding_box;
-mod point;
-mod r_tree;
-
-use crate::{bounding_box::BoundingBox, point::Point, r_tree::RTree};
+use rustree::{BoundingBox, Point, RTree};
 
 fn main() -> std::io::Result<()> {
     let mut rtree = RTree::new();
