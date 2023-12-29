@@ -18,20 +18,18 @@ fn main() -> std::io::Result<()> {
     try_add(0., 5.);
     try_add(-1., -5.);
 
-    let pt = Point { x: 0.5, y: 7.1 };
-    let min = Point {
-        x: pt.x - 0.5,
-        y: pt.y - 0.5,
-    };
-    let max = Point {
-        x: pt.x + 0.5,
-        y: pt.y + 0.5,
-    };
-    let found = rtree.find(&BoundingBox { min, max });
-    println!("Found: {found:?}");
+    let bbox = BoundingBox::from_center_size(Point::new(0.5, 7.1), Point::new(0.5, 0.5));
+    let found = rtree.find(&bbox);
+    println!("Found single: {found:?}");
 
     if let Ok(f) = std::fs::File::create("graph.dot") {
         rtree.dot(true, &mut std::io::BufWriter::new(f))?;
     }
+
+    let bbox = BoundingBox::from_center_size(Point::new(0., 0.5), Point::new(2., 2.));
+    for (i, found) in rtree.find_multi(&bbox).enumerate() {
+        println!("Found multi[{i}]: {found:?}");
+    }
+
     Ok(())
 }

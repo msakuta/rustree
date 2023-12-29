@@ -17,6 +17,13 @@ impl BoundingBox {
         Self { min, max }
     }
 
+    pub fn from_center_size(center: Point, size: Point) -> Self {
+        Self {
+            min: center - size,
+            max: center + size,
+        }
+    }
+
     pub fn get_union(&self, b: &BoundingBox) -> BoundingBox {
         return BoundingBox {
             min: Point {

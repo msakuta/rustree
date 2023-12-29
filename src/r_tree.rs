@@ -94,6 +94,53 @@ impl<T: Debug> RTree<T> {
         self.find_rec(0, bounding_box)
     }
 
+    pub fn find_multi(&self, bounding_box: &BoundingBox) -> impl Iterator<Item = &T> {
+        struct Finder<'a, T> {
+            this: &'a RTree<T>,
+            bb: BoundingBox,
+            /// (Node id, child index)
+            stack: Vec<(usize, usize)>,
+        }
+
+        impl<'a, T> Finder<'a, T> {
+            fn new(this: &'a RTree<T>, bb: BoundingBox) -> Self {
+                Self {
+                    this,
+                    bb,
+                    stack: vec![(0, 0)],
+                }
+            }
+
+            fn find_multi(&mut self) -> Option<&'a T> {
+                loop {
+                    let Some((node, child)) = self.stack.pop() else {
+                        return None;
+                    };
+                    if self.this.nodes[node].bb.intersects(&self.bb) {
+                        match self.this.nodes[node].node {
+                            RTreeNode::Leaf(ref leaf) => return Some(leaf),
+                            RTreeNode::Node(ref children) => {
+                                if let Some(child_id) = children.get(child) {
+                                    self.stack.push((node, child + 1));
+                                    self.stack.push((*child_id, 0));
+                                }
+                            }
+                        };
+                    }
+                }
+            }
+        }
+
+        impl<'a, T> Iterator for Finder<'a, T> {
+            type Item = &'a T;
+            fn next(&mut self) -> Option<Self::Item> {
+                self.find_multi()
+            }
+        }
+
+        Finder::new(self, *bounding_box)
+    }
+
     fn walk_rec(&self, node: usize, level: usize, f: &mut impl FnMut(usize, usize, &BoundingBox)) {
         f(node, level, &self.nodes[node].bb);
         match self.nodes[node].node {
