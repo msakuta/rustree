@@ -24,3 +24,10 @@ What you tend to end up with is the excessive use of `Rc<RefCell<T>>` and `Weak<
 I use a method inspired by Entity Component System found in games to flatten the tree to a linear vector to remove the need of `Rc`s and `RefCell`s.
 
 Note that `HashMap` can do a very similar thing. After all, `HashMap` is just a method to flatten random objects in a graph to a linear memory.
+
+Also note that I don't read the original paper. I just wanted to implement from my imagination without referring to the paper and see how far it goes.
+
+
+# References
+
+* The original paper http://www-db.deis.unibo.it/courses/SI-LS/papers/Gut84.pdf
