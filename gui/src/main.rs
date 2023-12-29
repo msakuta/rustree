@@ -2,7 +2,7 @@ use ::rustree::{Point, RTree};
 use eframe::{
     egui::{self, Context, Ui},
     emath::Align2,
-    epaint::{pos2, Color32, FontId, Pos2, Rect},
+    epaint::{pos2, vec2, Color32, FontId, Pos2, Rect},
 };
 use rustree::BoundingBox;
 
@@ -22,7 +22,15 @@ fn main() {
     .unwrap();
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Mode {
+    AddPoint,
+    Query,
+}
+
 struct RustreeApp {
+    mode: Mode,
+    query_radius: f64,
     rtree: RTree<Point>,
     offset: Pos2,
 }
@@ -30,6 +38,8 @@ struct RustreeApp {
 impl RustreeApp {
     fn new() -> Self {
         Self {
+            mode: Mode::AddPoint,
+            query_radius: 2.,
             rtree: Self::reset(),
             offset: pos2(100., 100.),
         }
@@ -38,7 +48,7 @@ impl RustreeApp {
     fn paint(&mut self, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
 
-        if response.clicked() {
+        if self.mode == Mode::AddPoint && response.clicked() {
             if let Some(pos) = response.interact_pointer_pos() {
                 let screen_pos = (pos - self.offset.to_vec2()) / 10.;
                 let pt = Point {
@@ -54,7 +64,7 @@ impl RustreeApp {
             if bb.get_area() == 0. {
                 let pos =
                     pos2(bb.min.x as f32 * 10., bb.min.y as f32 * 10.) + self.offset.to_vec2();
-                painter.circle(pos, 3., Color32::RED, (1., Color32::GREEN));
+                painter.circle(pos, 3., Color32::GRAY, (1., Color32::from_rgb(0, 127, 0)));
                 painter.text(
                     pos,
                     Align2::LEFT_CENTER,
@@ -75,6 +85,37 @@ impl RustreeApp {
                 );
             }
         });
+
+        if self.mode == Mode::Query {
+            if let Some(pos) = response.hover_pos() {
+                let screen_radius = (self.query_radius * 10.) as f32;
+                let screen_offset = vec2(screen_radius, screen_radius);
+                painter.rect_stroke(
+                    Rect {
+                        min: pos - screen_offset,
+                        max: pos + screen_offset,
+                    },
+                    0.,
+                    (1., Color32::from_rgb(0, 255, 0)),
+                );
+                let point_pos = (pos - self.offset.to_vec2()) / 10.;
+                let pt = Point::new(point_pos.x as f64, point_pos.y as f64);
+                for node in self.rtree.find_multi(&BoundingBox::from_center_size(
+                    pt,
+                    Point::new(self.query_radius, self.query_radius),
+                )) {
+                    let pos =
+                        pos2(node.x as f32 * 10., node.y as f32 * 10.) + self.offset.to_vec2();
+                    // println!("node: {node:?}")
+                    painter.circle(
+                        pos,
+                        5.,
+                        Color32::RED,
+                        (2., Color32::GREEN),
+                    );
+                }
+            }
+        }
     }
 
     fn reset() -> RTree<Point> {
@@ -95,6 +136,19 @@ impl RustreeApp {
         if ui.button("Reset").clicked() {
             self.rtree = Self::reset();
         }
+
+        ui.group(|ui| {
+            ui.label("Click mode:");
+            ui.radio_value(&mut self.mode, Mode::AddPoint, "Add point");
+            ui.radio_value(&mut self.mode, Mode::Query, "Query");
+        });
+
+        ui.label("Query radius:");
+        ui.add(egui::widgets::Slider::new(
+            &mut self.query_radius,
+            (0.1)..=10.,
+        ));
+
         let mut s = "id, level\n".to_string();
         self.rtree.walk(&mut |id, level, _bb| {
             s += &format!("{:width$}{id}, {level}\n", " ", width = level * 2);
