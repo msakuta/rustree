@@ -28,6 +28,17 @@ Note that `HashMap` can do a very similar thing. After all, `HashMap` is just a 
 Also note that I don't read the original paper. I just wanted to implement from my imagination without referring to the paper and see how far it goes.
 
 
+## How to run
+
+GUI demo:
+
+```
+cargo r -p rustree-gui
+```
+
+The main library crate is isolated from GUI (egui/eframe) dependencies, so you need to specify the subcrate by `-p` to run the demo.
+
+
 # References
 
 * The original paper http://www-db.deis.unibo.it/courses/SI-LS/papers/Gut84.pdf

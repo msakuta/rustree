@@ -110,16 +110,6 @@ impl RustreeApp {
 
         if self.mode == Mode::Query {
             if let Some(pos) = response.hover_pos() {
-                let screen_radius = (self.query_radius * self.scale as f64) as f32;
-                let screen_offset = vec2(screen_radius, screen_radius);
-                painter.rect_stroke(
-                    Rect {
-                        min: pos - screen_offset,
-                        max: pos + screen_offset,
-                    },
-                    0.,
-                    (1., Color32::from_rgb(0, 255, 0)),
-                );
                 let point_pos = (pos - self.offset.to_vec2()) / self.scale;
                 let pt = Point::new(point_pos.x as f64, point_pos.y as f64);
                 for c_hull in self.rtree.find_multi(&BoundingBox::from_center_size(
@@ -136,7 +126,7 @@ impl RustreeApp {
                             })
                             .collect(),
                         Color32::from_rgb(63, 95, 0),
-                        (1., Color32::from_rgb(31, 63, 0)),
+                        (2., Color32::RED),
                     ));
                     // let pos =
                     //     pos2(node.x as f32 * self.scale, node.y as f32 * self.scale) + self.offset.to_vec2();
@@ -148,6 +138,19 @@ impl RustreeApp {
                     //     (2., Color32::GREEN),
                     // );
                 }
+
+                // Query rectangle
+                let screen_radius = (self.query_radius * self.scale as f64) as f32;
+                let screen_offset = vec2(screen_radius, screen_radius);
+                painter.rect(
+                    Rect {
+                        min: pos - screen_offset,
+                        max: pos + screen_offset,
+                    },
+                    0.,
+                    Color32::from_rgba_unmultiplied(0, 255, 0, 63),
+                    (2., Color32::from_rgb(0, 255, 0)),
+                );
             }
         }
     }
