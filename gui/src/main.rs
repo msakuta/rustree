@@ -34,6 +34,7 @@ enum Mode {
 struct RustreeApp {
     mode: Mode,
     query_radius: f64,
+    adding_polygon: Vec<Point>,
     rtree: RTree<ConvexHull>,
     offset: Pos2,
     scale: f32,
@@ -44,6 +45,7 @@ impl RustreeApp {
         Self {
             mode: Mode::AddPoint,
             query_radius: 2.,
+            adding_polygon: vec![],
             rtree: Self::reset(),
             offset: pos2(300., 300.),
             scale: 5.,
@@ -53,15 +55,36 @@ impl RustreeApp {
     fn paint(&mut self, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
 
-        if self.mode == Mode::AddPoint && response.clicked() {
-            if let Some(pos) = response.interact_pointer_pos() {
-                let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
-                let pt = Point {
-                    x: screen_pos.x as f64,
-                    y: screen_pos.y as f64,
-                };
-                // self.rtree
-                //     .insert_entry(pt, BoundingBox::from_minmax(pt, pt));
+        if self.mode == Mode::AddPoint {
+            if response.clicked_by(egui::PointerButton::Primary) {
+                if let Some(pos) = response.interact_pointer_pos() {
+                    let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
+                    let pt = Point {
+                        x: screen_pos.x as f64,
+                        y: screen_pos.y as f64,
+                    };
+                    self.adding_polygon.push(pt);
+                    // self.rtree
+                    //     .insert_entry(pt, BoundingBox::from_minmax(pt, pt));
+                }
+            } else if response.clicked_by(egui::PointerButton::Secondary) {
+                if let Some(pos) = response.interact_pointer_pos() {
+                    let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
+                    let pt = Point {
+                        x: screen_pos.x as f64,
+                        y: screen_pos.y as f64,
+                    };
+                    self.adding_polygon.push(pt);
+                    if 3 <= self.adding_polygon.len() {
+                        let c_hull = ConvexHull {
+                            id: 0,
+                            apexes: std::mem::take(&mut self.adding_polygon),
+                        };
+                        if let Some(bb) = c_hull.bounding_box() {
+                            self.rtree.insert_entry(c_hull, bb);
+                        }
+                    }
+                }
             }
         }
 
@@ -107,6 +130,31 @@ impl RustreeApp {
                 (1., Color32::BLUE),
             );
         });
+
+        if self.mode == Mode::AddPoint {
+            let transform_point = |pt: &Point| {
+                pos2(pt.x as f32 * self.scale, pt.y as f32 * self.scale) + self.offset.to_vec2()
+            };
+
+            if 2 <= self.adding_polygon.len() {
+                painter.add(PathShape::line(
+                    self.adding_polygon
+                        .iter()
+                        .map(|pt| transform_point(pt))
+                        .collect(),
+                    (1., Color32::from_rgb(127, 41, 41)),
+                ));
+            }
+
+            if let Some(cursor) = response.hover_pos() {
+                if let Some(point) = self.adding_polygon.last() {
+                    painter.line_segment(
+                        [transform_point(point), cursor],
+                        (2., Color32::from_rgb(95, 31, 31)),
+                    );
+                }
+            }
+        }
 
         if self.mode == Mode::Query {
             if let Some(pos) = response.hover_pos() {
