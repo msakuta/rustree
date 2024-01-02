@@ -2,6 +2,8 @@
 
 An RTree implementation in Rust
 
+Try it now on your browser! https://msakuta.github.io/rustree/
+
 ![graph](images/graph.png)
 
 https://github.com/msakuta/rustree/assets/2798715/fbf909a2-1a7c-41b4-86f3-d421070c4241

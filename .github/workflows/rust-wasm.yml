@@ -36,6 +36,6 @@ jobs:
         # Optional version of trunk to install(eg. 'v0.16.0', 'latest')
         version: 'latest'
     - name: Build with trunk
-      run: cd gui && trunk build --release
+      run: rustup target add wasm32-unknown-unknown && cd gui && RUSTFLAGS='--cfg=web_sys_unstable_apis' trunk build --release
     - name: Check artifacts
       run: cd gui && ls dist
