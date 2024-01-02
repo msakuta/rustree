@@ -1,3 +1,6 @@
+mod walk;
+
+pub use self::walk::WalkCallbackPayload;
 use crate::{bounding_box::BoundingBox, point::Point};
 use std::{fmt::Debug, io::Write};
 
@@ -158,27 +161,6 @@ impl<T: Debug> RTree<T> {
         }
 
         Finder::new(self, *bounding_box)
-    }
-}
-
-pub struct WalkCallbackPayload<'a, T>(pub usize, pub usize, pub &'a RTreeEntry<T>);
-
-impl<T: Debug> RTree<T> {
-    fn walk_rec(&self, node: usize, level: usize, f: &mut impl FnMut(&WalkCallbackPayload<T>)) {
-        f(&WalkCallbackPayload(node, level, &self.nodes[node]));
-        match self.nodes[node].node {
-            RTreeNode::Leaf(_) => {}
-            RTreeNode::Node(ref children) => {
-                for child in children {
-                    self.walk_rec(*child, level + 1, f);
-                }
-            }
-        }
-    }
-
-    /// Passes (index, level, bounding_box) to the callback
-    pub fn walk(&self, f: &mut impl FnMut(&WalkCallbackPayload<T>)) {
-        self.walk_rec(0, 0, f);
     }
 
     pub fn adjust_tree(&mut self, node: usize, nodes_to_add: &mut Vec<RTreeEntry<T>>) {

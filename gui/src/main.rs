@@ -96,52 +96,54 @@ impl RustreeApp {
 
         let max_depth = self.rtree.max_depth();
 
-        self.rtree
-            .walk(&mut |WalkCallbackPayload(id, level, entry)| {
-                let bb = entry.bounding_box();
-                match entry.node() {
-                    RTreeNode::Node(_) => {
-                        let pos = pos2(bb.min.x as f32 * self.scale, bb.min.y as f32 * self.scale)
-                            + self.offset.to_vec2();
-                        // painter.circle(pos, 3., Color32::GRAY, (1., Color32::from_rgb(0, 127, 0)));
-                        painter.text(
-                            pos,
-                            Align2::LEFT_CENTER,
-                            format!("{}, {}", id, level),
-                            FontId::new(16., egui::FontFamily::Proportional),
-                            Color32::BLACK,
-                        );
-                    }
-                    RTreeNode::Leaf(c_hull) => {
-                        painter.add(PathShape::convex_polygon(
-                            c_hull
-                                .apexes
-                                .iter()
-                                .map(|pt| {
-                                    pos2(pt.x as f32 * self.scale, pt.y as f32 * self.scale)
-                                        + self.offset.to_vec2()
-                                })
-                                .collect(),
-                            Color32::from_rgba_premultiplied(127, 255, 0, 63),
-                            (1., Color32::from_rgb(63, 95, 0)),
-                        ));
-                    }
+        self.rtree.walk(&mut |payload| {
+            let WalkCallbackPayload {
+                id, level, entry, ..
+            } = payload;
+            let bb = entry.bounding_box();
+            match entry.node() {
+                RTreeNode::Node(_) => {
+                    let pos = pos2(bb.min.x as f32 * self.scale, bb.min.y as f32 * self.scale)
+                        + self.offset.to_vec2();
+                    // painter.circle(pos, 3., Color32::GRAY, (1., Color32::from_rgb(0, 127, 0)));
+                    painter.text(
+                        pos,
+                        Align2::LEFT_CENTER,
+                        format!("{}, {}", id, level),
+                        FontId::new(16., egui::FontFamily::Proportional),
+                        Color32::BLACK,
+                    );
                 }
+                RTreeNode::Leaf(c_hull) => {
+                    painter.add(PathShape::convex_polygon(
+                        c_hull
+                            .apexes
+                            .iter()
+                            .map(|pt| {
+                                pos2(pt.x as f32 * self.scale, pt.y as f32 * self.scale)
+                                    + self.offset.to_vec2()
+                            })
+                            .collect(),
+                        Color32::from_rgba_premultiplied(127, 255, 0, 63),
+                        (1., Color32::from_rgb(63, 95, 0)),
+                    ));
+                }
+            }
 
-                painter.rect_stroke(
-                    Rect {
-                        min: pos2(bb.min.x as f32 * self.scale, bb.min.y as f32 * self.scale)
-                            + self.offset.to_vec2(),
-                        max: pos2(bb.max.x as f32 * self.scale, bb.max.y as f32 * self.scale)
-                            + self.offset.to_vec2(),
-                    },
-                    0.,
-                    (
-                        (max_depth - level + 1) as f32,
-                        PALETTE[level % PALETTE.len()],
-                    ),
-                );
-            });
+            painter.rect_stroke(
+                Rect {
+                    min: pos2(bb.min.x as f32 * self.scale, bb.min.y as f32 * self.scale)
+                        + self.offset.to_vec2(),
+                    max: pos2(bb.max.x as f32 * self.scale, bb.max.y as f32 * self.scale)
+                        + self.offset.to_vec2(),
+                },
+                0.,
+                (
+                    (max_depth - level + 1) as f32,
+                    PALETTE[level % PALETTE.len()],
+                ),
+            );
+        });
 
         if self.mode == Mode::AddPoint {
             let transform_point = |pt: &Point| {
@@ -256,9 +258,10 @@ impl RustreeApp {
         ));
 
         let mut s = "id, level\n".to_string();
-        self.rtree.walk(&mut |WalkCallbackPayload(id, level, _bb)| {
-            s += &format!("{:width$}{id}, {level}\n", " ", width = level * 2);
-        });
+        self.rtree
+            .walk(&mut |WalkCallbackPayload { id, level, .. }| {
+                s += &format!("{:width$}{id}, {level}\n", " ", width = level * 2);
+            });
         ui.label(s);
     }
 }
