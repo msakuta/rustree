@@ -29,6 +29,7 @@ impl<T> RTreeEntry<T> {
 #[derive(Debug)]
 pub struct RTree<T> {
     nodes: Vec<RTreeEntry<T>>,
+    max_depth: usize,
 }
 
 impl<T: Debug> RTree<T> {
@@ -42,6 +43,7 @@ impl<T: Debug> RTree<T> {
                 parent: None,
                 node: RTreeNode::Node(vec![]),
             }],
+            max_depth: 1,
         }
     }
 
@@ -49,9 +51,18 @@ impl<T: Debug> RTree<T> {
         self.nodes[0].bb
     }
 
-    fn choose_leaf_rec(&self, node: usize, bounding_box: &BoundingBox) -> usize {
+    pub fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+
+    fn choose_leaf_rec(
+        &self,
+        node: usize,
+        bounding_box: &BoundingBox,
+        level: usize,
+    ) -> (usize, usize) {
         if matches!(self.nodes[node].node, RTreeNode::Leaf(_)) {
-            return node;
+            return (node, level);
         }
         let min = if let RTreeNode::Node(children) = &self.nodes[node].node {
             children
@@ -67,14 +78,15 @@ impl<T: Debug> RTree<T> {
             None
         };
         if let Some(min) = min {
-            self.choose_leaf_rec(min, bounding_box)
+            self.choose_leaf_rec(min, bounding_box, level + 1)
         } else {
-            node
+            (node, level)
         }
     }
 
-    fn choose_leaf(&self, this: usize, bounding_box: &BoundingBox) -> usize {
-        self.choose_leaf_rec(this, bounding_box)
+    /// Returnst (id, level)
+    fn choose_leaf(&self, this: usize, bounding_box: &BoundingBox) -> (usize, usize) {
+        self.choose_leaf_rec(this, bounding_box, 0)
     }
 
     fn find_rec(&self, this: usize, bounding_box: &BoundingBox) -> Option<&T> {
@@ -147,14 +159,13 @@ impl<T: Debug> RTree<T> {
 
         Finder::new(self, *bounding_box)
     }
+}
 
-    fn walk_rec(
-        &self,
-        node: usize,
-        level: usize,
-        f: &mut impl FnMut(usize, usize, &RTreeEntry<T>),
-    ) {
-        f(node, level, &self.nodes[node]);
+pub struct WalkCallbackPayload<'a, T>(pub usize, pub usize, pub &'a RTreeEntry<T>);
+
+impl<T: Debug> RTree<T> {
+    fn walk_rec(&self, node: usize, level: usize, f: &mut impl FnMut(&WalkCallbackPayload<T>)) {
+        f(&WalkCallbackPayload(node, level, &self.nodes[node]));
         match self.nodes[node].node {
             RTreeNode::Leaf(_) => {}
             RTreeNode::Node(ref children) => {
@@ -166,7 +177,7 @@ impl<T: Debug> RTree<T> {
     }
 
     /// Passes (index, level, bounding_box) to the callback
-    pub fn walk(&self, f: &mut impl FnMut(usize, usize, &RTreeEntry<T>)) {
+    pub fn walk(&self, f: &mut impl FnMut(&WalkCallbackPayload<T>)) {
         self.walk_rec(0, 0, f);
     }
 
@@ -229,12 +240,28 @@ impl<T: Debug> RTree<T> {
         }
     }
 
+    /// Update cache of max depth from a subtree. You can start from the middle of a tree. You need to give the correct starting level.
+    ///
+    /// This crate does not cache the depth of a node inside each node payload to save space and also remove maintenance cost
+    /// when the node is split into children, so we need to update the cached max depth every time we may have changed the tree.
+    fn update_max_depth(max_depth: &mut usize, nodes: &[RTreeEntry<T>], id: usize, level: usize) {
+        *max_depth = (*max_depth).max(level);
+        match &nodes[id].node {
+            RTreeNode::Node(node) => {
+                for child in node {
+                    Self::update_max_depth(max_depth, nodes, *child, level + 1);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Insert an entry object of type T in this RTree with an associated bounding box.
     ///
     /// There is no built-in mechanism to ensure `bounding_box` is actually bounding `value`.
     /// It is the caller's responsibility to hold that precondition.
     pub fn insert_entry(&mut self, value: T, bounding_box: BoundingBox) {
-        let chosen_leaf_i = self.choose_leaf(0, &bounding_box);
+        let (chosen_leaf_i, level) = self.choose_leaf(0, &bounding_box);
 
         let node_to_add = RTreeEntry {
             bb: bounding_box,
@@ -255,6 +282,7 @@ impl<T: Debug> RTree<T> {
         children.push(idx);
         if children.len() <= M {
             self.update_bbox(chosen_leaf_i, bounding_box);
+            Self::update_max_depth(&mut self.max_depth, &self.nodes, chosen_leaf_i, level);
             return;
         }
 
@@ -315,6 +343,7 @@ impl<T: Debug> RTree<T> {
         self.update_bbox(chosen_leaf_i, bounding_box);
         let node = &mut self.nodes[chosen_leaf_i].node;
         *node = RTreeNode::Node(vec![left_child, right_child]);
+        Self::update_max_depth(&mut self.max_depth, &self.nodes, chosen_leaf_i, level);
     }
 
     /// Outputs a dot file for graphviz visualization.

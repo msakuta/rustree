@@ -5,5 +5,5 @@ mod r_tree;
 pub use crate::{
     bounding_box::BoundingBox,
     point::Point,
-    r_tree::{RTree, RTreeEntry, RTreeNode},
+    r_tree::{RTree, RTreeEntry, RTreeNode, WalkCallbackPayload},
 };
