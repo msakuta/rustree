@@ -247,7 +247,7 @@ impl RustreeApp {
 
         ui.group(|ui| {
             ui.label("Click mode:");
-            ui.radio_value(&mut self.mode, Mode::AddPoint, "Add point");
+            ui.radio_value(&mut self.mode, Mode::AddPoint, "Add polygon (right click to close polygon)");
             ui.radio_value(&mut self.mode, Mode::Query, "Query");
         });
 
