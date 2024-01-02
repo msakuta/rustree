@@ -1962,6 +1962,7 @@ name = "rustree-gui"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "rand",
  "rustree",
  "serde",
  "serde_json",

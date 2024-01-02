@@ -28,6 +28,7 @@ fn main() {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Mode {
     AddPoint,
+    AddPolygon,
     Query,
 }
 
@@ -55,37 +56,66 @@ impl RustreeApp {
     fn paint(&mut self, ui: &mut Ui) {
         let (response, painter) = ui.allocate_painter(ui.available_size(), egui::Sense::click());
 
-        if self.mode == Mode::AddPoint {
-            if response.clicked_by(egui::PointerButton::Primary) {
-                if let Some(pos) = response.interact_pointer_pos() {
-                    let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
-                    let pt = Point {
-                        x: screen_pos.x as f64,
-                        y: screen_pos.y as f64,
-                    };
-                    self.adding_polygon.push(pt);
-                    // self.rtree
-                    //     .insert_entry(pt, BoundingBox::from_minmax(pt, pt));
-                }
-            } else if response.clicked_by(egui::PointerButton::Secondary) {
-                if let Some(pos) = response.interact_pointer_pos() {
-                    let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
-                    let pt = Point {
-                        x: screen_pos.x as f64,
-                        y: screen_pos.y as f64,
-                    };
-                    self.adding_polygon.push(pt);
-                    if 3 <= self.adding_polygon.len() {
-                        let c_hull = ConvexHull {
-                            id: 0,
-                            apexes: std::mem::take(&mut self.adding_polygon),
+        match self.mode {
+            Mode::AddPolygon => {
+                if response.clicked_by(egui::PointerButton::Primary) {
+                    if let Some(pos) = response.interact_pointer_pos() {
+                        let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
+                        let pt = Point {
+                            x: screen_pos.x as f64,
+                            y: screen_pos.y as f64,
                         };
+                        self.adding_polygon.push(pt);
+                        // self.rtree
+                        //     .insert_entry(pt, BoundingBox::from_minmax(pt, pt));
+                    }
+                } else if response.clicked_by(egui::PointerButton::Secondary) {
+                    if let Some(pos) = response.interact_pointer_pos() {
+                        let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
+                        let pt = Point {
+                            x: screen_pos.x as f64,
+                            y: screen_pos.y as f64,
+                        };
+                        self.adding_polygon.push(pt);
+                        if 3 <= self.adding_polygon.len() {
+                            let c_hull = ConvexHull {
+                                id: 0,
+                                apexes: std::mem::take(&mut self.adding_polygon),
+                            };
+                            if let Some(bb) = c_hull.bounding_box() {
+                                self.rtree.insert_entry(c_hull, bb);
+                            }
+                        }
+                    }
+                }
+            }
+            Mode::AddPoint => {
+                if response.clicked() {
+                    if let Some(pos) = response.interact_pointer_pos() {
+                        let screen_pos = (pos - self.offset.to_vec2()) / self.scale;
+                        let pt = Point {
+                            x: screen_pos.x as f64,
+                            y: screen_pos.y as f64,
+                        };
+                        use std::f64::consts::PI;
+                        let theta0 = rand::random::<f64>() * PI * 2.;
+                        let r = rand::random::<f64>() * 3. + 3.;
+                        let apexes = (0..5)
+                            .map(|i| {
+                                let theta = i as f64 * PI * 2. / 5. + theta0;
+                                let x = r * theta.cos();
+                                let y = r * theta.sin();
+                                Point::new(x, y) + pt
+                            })
+                            .collect();
+                        let c_hull = ConvexHull { id: 0, apexes };
                         if let Some(bb) = c_hull.bounding_box() {
                             self.rtree.insert_entry(c_hull, bb);
                         }
                     }
                 }
             }
+            _ => {}
         }
 
         const PALETTE: [Color32; 3] = [
@@ -145,7 +175,7 @@ impl RustreeApp {
             );
         });
 
-        if self.mode == Mode::AddPoint {
+        if self.mode == Mode::AddPolygon {
             let transform_point = |pt: &Point| {
                 pos2(pt.x as f32 * self.scale, pt.y as f32 * self.scale) + self.offset.to_vec2()
             };
@@ -247,7 +277,12 @@ impl RustreeApp {
 
         ui.group(|ui| {
             ui.label("Click mode:");
-            ui.radio_value(&mut self.mode, Mode::AddPoint, "Add polygon (right click to close polygon)");
+            ui.radio_value(&mut self.mode, Mode::AddPoint, "Add point");
+            ui.radio_value(
+                &mut self.mode,
+                Mode::AddPolygon,
+                "Add polygon (right click to close polygon)",
+            );
             ui.radio_value(&mut self.mode, Mode::Query, "Query");
         });
 
