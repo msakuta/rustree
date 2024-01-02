@@ -66,8 +66,6 @@ impl RustreeApp {
                             y: screen_pos.y as f64,
                         };
                         self.adding_polygon.push(pt);
-                        // self.rtree
-                        //     .insert_entry(pt, BoundingBox::from_minmax(pt, pt));
                     }
                 } else if response.clicked_by(egui::PointerButton::Secondary) {
                     if let Some(pos) = response.interact_pointer_pos() {
@@ -257,22 +255,12 @@ impl RustreeApp {
                 rtree.insert_entry(c_hull, bbox);
             }
         }
-        // let mut rtree = RTree::new();
-        // let mut try_add = |x, y| {
-        //     let pt = Point { x, y };
-        //     rtree.insert_entry(pt, BoundingBox { min: pt, max: pt });
-        // };
-        // try_add(2., 0.);
-        // try_add(-2., 1.);
-        // try_add(1., 7.);
-        // try_add(0., 5.);
-        // try_add(-1., -5.);
         rtree
     }
 
     fn show_side_panel(&mut self, ui: &mut Ui) {
         if ui.button("Reset").clicked() {
-            // self.rtree = Self::reset();
+            self.rtree = Self::reset();
         }
 
         ui.group(|ui| {
